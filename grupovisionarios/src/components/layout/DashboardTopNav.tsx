@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Bell, UserCircle } from 'lucide-react'
+import { Bell } from 'lucide-react'
+import UserMenu from '@/components/layout/UserMenu'
 
 interface NavItem {
   id: string
@@ -53,7 +54,7 @@ export default function DashboardTopNav({ balance }: { balance?: string }) {
             <button className="relative text-gray-600 hover:text-gray-900">
               <Bell className="w-5 h-5" />
             </button>
-            <UserCircle className="w-7 h-7 text-gray-400" />
+            <UserMenu />
           </div>
         </div>
       </div>

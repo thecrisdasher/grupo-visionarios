@@ -1,14 +1,5 @@
 {
-  "node": {
-    "bb48790885153296977d63aadc2dbf8e3444e258": {
-      "workers": {
-        "app/dashboard/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5Cgrupo-visionarios%5C%5Cgrupovisionarios%5C%5Csrc%5C%5Capp%5C%5Cdashboard%5C%5Cpage.tsx%22%2C%5B%22default%22%5D%5D%5D&__client_imported__=!"
-      },
-      "layer": {
-        "app/dashboard/page": "rsc"
-      }
-    }
-  },
+  "node": {},
   "edge": {},
-  "encryptionKey": "rRKf5FHQBKSzfDqgsyk2bL7ECI2x90RbBoy2oM0KLC8="
+  "encryptionKey": "cSUz5VytG7nVmlt2AKN644tGHJYlwUVGVCfWWZSz0n0="
 }

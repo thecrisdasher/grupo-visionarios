@@ -270,4 +270,16 @@ export interface PromotionProgressProps {
   currentLevel: Level
   nextLevel?: Level
   showDetails?: boolean
+}
+
+// Company values types
+export interface Value {
+  id: string
+  title: string
+  description: string
+  content: string
+  imageUrl: string
+  videoUrl: string
+  order: number
+  isActive: boolean
 } 

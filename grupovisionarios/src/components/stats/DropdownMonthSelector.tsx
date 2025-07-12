@@ -152,7 +152,7 @@ export const DropdownMonthSelector: React.FC<DropdownMonthSelectorProps> = ({
                     'w-full px-4 py-2.5 text-left text-sm transition-colors duration-150',
                     'hover:bg-gray-50 focus:bg-gray-50 focus:outline-none',
                     'flex items-center justify-between',
-                    option.value === value && 'bg-blue-50 text-blue-700'
+                    option.value === value ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
                   )}
                 >
                   <span className="flex-1">{option.label}</span>
