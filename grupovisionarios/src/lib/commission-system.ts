@@ -19,8 +19,23 @@ const convertPrismaLevel = (lvl: any): Level => ({
   icon: lvl.icon ?? '',
   isActive: (lvl.isActive ?? true) as boolean,
   createdAt: lvl.createdAt,
-  updatedAt: lvl.updatedAt
+  updatedAt: lvl.updatedAt,
+  requirements: {
+    // Basado en los requerimientos según el nivel (orden)
+    referrals: getLevelRequiredReferrals(lvl.order),
+    earnings: 0 // No hay requisitos de ganancias específicos
+  }
 })
+
+// Función para determinar el número de referidos directos requeridos por nivel
+function getLevelRequiredReferrals(levelOrder: number): number {
+  // Por defecto, la mayoría de niveles requieren 3 referidos directos
+  switch (levelOrder) {
+    case 1: return 3;  // Visionario Primeros 3
+    case 2: return 3;  // Mentor 3 de 3 (con estructura 3x3)
+    default: return 3; // Otros niveles requieren mantener 3 referidos
+  }
+}
 
 const prisma = new PrismaClient()
 

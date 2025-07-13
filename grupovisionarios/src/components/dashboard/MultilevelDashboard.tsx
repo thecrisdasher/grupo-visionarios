@@ -282,9 +282,11 @@ export const MultilevelDashboard: React.FC<MultilevelDashboardProps> = ({
               
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2">Requisitos para {nextLevel.name}:</h4>
-                <p className="text-sm text-gray-600">
-                  {nextLevel.requirementsDescription}
-                </p>
+                {nextLevel.requirementsDescription && (
+                  <p className="text-sm text-gray-600">
+                    {nextLevel.requirementsDescription}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-4 mt-3">
                   <div className="flex items-center gap-2">
                     <div className={cn(

@@ -1,169 +1,110 @@
-// User types
+// User Types
 export interface User {
   id: string
-  email: string
   name: string
-  role: 'admin' | 'affiliate'
-  referralCode: string
-  referredBy?: string
-  phone?: string
-  avatar?: string
-  isActive: boolean
-  levelId: string
-  level?: Level
-  createdAt: Date
-  updatedAt: Date
+  email: string
+  inviteLink?: string
+  statsLink?: string
+  trainingLink?: string
+  level?: string
+  referralCode?: string
+  referrerId?: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
-// Level types for the new multilevel system
+// Re-export UserReferralStructure from multilevel-system
+export type { UserReferralStructure } from '@/lib/multilevel-system'
+
+// Referral Types
+export interface Referral {
+  id: string
+  name: string
+  email: string
+  joinDate: string
+  status: 'active' | 'inactive' | 'pending'
+  level: number
+  earnings?: number
+  referralsCount?: number
+}
+
+// Level Types - Updated to match database structure and component usage
 export interface Level {
   id: string
   name: string
+  icon: string
+  color: string
   order: number
   commissionRate: number
-  requirementsDescription: string
-  color: string
-  icon: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-// Level promotion types
-export interface LevelPromotion {
-  id: string
-  userId: string
-  fromLevelId?: string
-  toLevelId: string
-  promotedAt: Date
-  reason: string
-  directReferrals: number
-  validStructure: boolean
-  fromLevel?: Level
-  toLevel: Level
-}
-
-// Referral types
-export interface Referral {
-  id: string
-  referrerId: string
-  referredId: string
-  level: number
-  commission: number
-  status: 'pending' | 'approved' | 'paid' | 'rejected'
-  createdAt: Date
-  updatedAt: Date
-  referrer?: User
-  referred?: User
-}
-
-// New multilevel system types
-export interface UserReferralStructure {
-  id: string
-  name: string
-  email: string
-  level: {
-    id: string
-    name: string
-    order: number
-    color: string
-    icon: string
+  requirements: {
+    referrals: number
+    earnings: number
   }
-  directReferrals: UserReferralStructure[]
-  referralCount: number
-  isActive: boolean
-  joinDate: Date
+  requirementsDescription?: string
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
-export interface PromotionEvaluation {
+// Evaluation Types
+export interface Evaluation {
+  success: boolean
+  currentLevel: Level
+  nextLevel?: Level
+  progress: {
+    referrals: number
+    earnings: number
+  }
   canPromote: boolean
-  currentLevel: number
-  nextLevel?: number
+}
+
+// Promotion Evaluation Types - Updated to match API response structure
+export interface PromotionEvaluation {
+  success: boolean
+  currentLevel: Level
+  nextLevel?: Level
   directReferrals: number
   validSecondLevelReferrals: number
-  requiredStructure: string
+  canPromote: boolean
+  progress: {
+    referrals: number
+    earnings: number
+  }
+  promoted?: boolean
+  message?: string
+  error?: string
   missingRequirements?: string[]
+  requiredStructure?: string
 }
 
-export interface ReferralStats {
+// API Response type alias
+export type PromotionApiResponse = PromotionEvaluation
+
+// Statistics Types
+export interface Statistics {
   totalReferrals: number
-  directReferrals: number
-  indirectReferrals: number
-  totalCommissions: number
-  pendingCommissions: number
-  paidCommissions: number
-  currentLevel: Level
-  nextLevel?: Level
-  canPromote: boolean
-  promotionProgress: number
+  activeReferrals: number
+  totalEarnings: number
+  monthlyEarnings: number
 }
 
-// Legacy types - keeping for backward compatibility
-export interface UserLevel {
-  name: string
-  color: string
-  minReferrals?: number
-  maxReferrals?: number
-  commissionRate: number
-  benefits?: string[]
-}
-
-export interface PaymentStatus {
-  id: string
-  amount: number
-  currency: string
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded'
-  paymentMethod: string
-  stripePaymentId?: string
-  createdAt: Date
-}
-
-export interface InvoiceData {
-  id: string
-  invoiceNumber: string
-  amount: number
-  currency: string
-  status: 'pending' | 'sent' | 'paid' | 'overdue' | 'cancelled'
-  concept: string
-  pdfUrl?: string
-  emailSent: boolean
-  dueDate?: Date
-  paidAt?: Date
-  createdAt: Date
-}
-
-export interface AffiliateStats {
-  totalReferrals: number
-  monthlyReferrals: number
-  totalCommissions: number
-  pendingCommissions: number
-  currentLevel: Level
-  nextLevel?: Level
-  nextLevelProgress: number
-  recentReferrals: Referral[]
-  commissionHistory: CommissionHistory[]
-  promotionHistory: LevelPromotion[]
-  canPromote: boolean
-}
-
-export interface CommissionHistory {
-  id: string
-  amount: number
-  type: 'referral' | 'bonus' | 'penalty'
-  description: string
-  status: 'pending' | 'paid'
-  createdAt: Date
-}
-
-// Dashboard types
-export interface DashboardStats {
+// Structure Types
+export interface Structure {
+  success: boolean
   user: User
-  stats: AffiliateStats
-  structure: UserReferralStructure
-  evaluation: PromotionEvaluation
+  statistics: Statistics
+  structure: Referral[]
 }
 
-// API Response types
+// Monthly Data Types
+export interface MonthlyData {
+  referrals: number
+  earnings: number
+  conversions: number
+  newSignups: number
+}
+
+// API Response Types
 export interface ApiResponse<T = any> {
   success: boolean
   data?: T
@@ -171,115 +112,18 @@ export interface ApiResponse<T = any> {
   message?: string
 }
 
-export interface ReferralApiResponse extends ApiResponse {
-  referralCreated?: boolean
-  promoted?: boolean
-  newLevel?: Level
-  referrer?: {
-    id: string
-    name: string
-    level: Level
-    totalReferrals: number
-  }
-}
-
-export interface StructureApiResponse extends ApiResponse {
-  user?: {
-    id: string
-    name: string
-    email: string
-    level: Level
-    isActive: boolean
-    joinDate: Date
-  }
-  structure?: UserReferralStructure[]
-  statistics?: {
-    directReferrals: number
-    totalReferrals: number
-    activeReferrals: number
-    maxDepth: number
-    hasThreeDirects: boolean
-    directsWithThree: number
-    isValid3x3: boolean
-  }
-  validation?: {
-    canPromote: boolean
-    requirements: {
-      directReferrals: {
-        required: number
-        current: number
-        met: boolean
-      }
-      secondLevelReferrals: {
-        required: number
-        current: number
-        met: boolean
-      }
-    }
-  }
-}
-
-export interface PromotionApiResponse extends ApiResponse {
-  promoted?: boolean
-  promotion?: {
-    fromLevel: Level
-    toLevel: Level
-    promotedAt: Date
-    reason: string
-  }
-  updatedUserInfo?: any
-  evaluation?: PromotionEvaluation
-  progress?: {
-    percentage: number
-    directReferrals: {
-      current: number
-      required: number
-      percentage: number
-    }
-    validStructure: {
-      current: number
-      required: number
-      percentage: number
-    }
-  }
-  requirements?: {
-    met: boolean
-    missing: string[]
-    description: string
-  }
-}
-
-// Component prop types
-export interface LevelDisplayProps {
-  level: Level
-  showIcon?: boolean
-  showName?: boolean
-  showProgress?: boolean
-  className?: string
-}
-
-export interface ReferralTreeProps {
-  structure: UserReferralStructure
-  maxDepth?: number
-  interactive?: boolean
-  onNodeClick?: (node: UserReferralStructure) => void
-}
-
-export interface PromotionProgressProps {
-  evaluation: PromotionEvaluation
-  currentLevel: Level
-  nextLevel?: Level
-  showDetails?: boolean
-}
-
-// Company values types
-export interface Value {
-  id: string
-  title: string
+// Payment Types
+export interface PaymentData {
+  amount: number
+  currency: string
+  reference: string
   description: string
-  content: string
-  imageUrl: string
-  videoUrl: string
-  order: number
-  isActive: boolean
-} 
+  buyerEmail: string
+  buyerFullName: string
+}
+
+export interface PaymentResponse {
+  success: boolean
+  checkoutUrl?: string
+  error?: string
+}

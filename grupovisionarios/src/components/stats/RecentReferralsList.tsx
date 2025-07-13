@@ -21,11 +21,11 @@ export interface Referral {
   id: string
   name: string
   email: string
-  joinDate: Date
+  joinDate: Date | string
   status: 'active' | 'pending' | 'inactive'
   level: number
   totalEarnings: number
-  lastActivity?: Date
+  lastActivity?: Date | string
   avatar?: string
 }
 
@@ -55,17 +55,19 @@ export const RecentReferralsList: React.FC<RecentReferralsListProps> = ({
     }).format(amount)
   }
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date)
     return new Intl.DateTimeFormat('es-CO', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    }).format(date)
+    }).format(dateObj)
   }
 
-  const getTimeAgo = (date: Date) => {
+  const getTimeAgo = (date: Date | string) => {
     const now = new Date()
-    const diffInMs = now.getTime() - date.getTime()
+    const dateObj = date instanceof Date ? date : new Date(date)
+    const diffInMs = now.getTime() - dateObj.getTime()
     const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
     const diffInDays = Math.floor(diffInHours / 24)
 
@@ -289,14 +291,15 @@ export const ReferralQuickView: React.FC<ReferralQuickViewProps> = ({
     }).format(amount)
   }
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date)
     return new Intl.DateTimeFormat('es-CO', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date)
+    }).format(dateObj)
   }
 
   return (

@@ -6,8 +6,20 @@ import { cn } from '@/lib/utils'
 import { Level, PromotionEvaluation } from '@/types'
 import { Crown, Star, Trophy, Award } from 'lucide-react'
 
-// Allow LevelDisplay to accept either full Level objects or simplified versions
-export type LevelLike = Pick<Level, 'id' | 'name' | 'order' | 'color' | 'icon'> & Partial<Level>
+// Allow LevelDisplay to accept either full Level objects or database level structure
+export type LevelLike = Level | {
+  id: string
+  name: string
+  order: number
+  color: string
+  icon: string | null
+  commissionRate?: number
+  requirements?: {
+    referrals: number
+    earnings: number
+  }
+  requirementsDescription?: string
+}
 
 interface LevelDisplayProps {
   level: LevelLike
@@ -209,7 +221,7 @@ export const LevelDisplay: React.FC<LevelDisplayProps> = ({
       </div>
 
       {/* Description */}
-      {showDescription && (
+      {showDescription && level.requirementsDescription && (
         <p className={cn(config.description, 'text-gray-600 mb-3')}>
           {level.requirementsDescription}
         </p>

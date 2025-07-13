@@ -3,17 +3,47 @@ import { PrismaClient } from '@prisma/client'
 import { generateUserLinks } from '@/lib/user-links'
 import { generateReferralCode } from '@/lib/utils'
 
-const ePayco = require('epayco-sdk-node')({
-  apiKey: process.env.EPAYCO_PUBLIC_KEY,
-  privateKey: process.env.EPAYCO_PRIVATE_KEY,
-  lang: 'ES',
-  test: process.env.EPAYCO_TEST === 'true'
-})
+// 🎯 SOLUCIÓN ROBUSTA: Polyfill fetch antes de cualquier importación del SDK
+if (!global.fetch) {
+  const fetch = require('node-fetch')
+  global.fetch = fetch
+  global.Headers = fetch.Headers
+  global.Request = fetch.Request
+  global.Response = fetch.Response
+}
 
 const prisma = new PrismaClient()
 
+// ✅ Inicializar ePayco SDK después del polyfill
+function initializeEPaycoSDK() {
+  if (!process.env.EPAYCO_PUBLIC_KEY || !process.env.EPAYCO_PRIVATE_KEY) {
+    throw new Error('ePayco configuration missing')
+  }
+
+  return require('epayco-sdk-node')({
+    apiKey: process.env.EPAYCO_PUBLIC_KEY,
+    privateKey: process.env.EPAYCO_PRIVATE_KEY,
+    lang: 'ES',
+    test: process.env.EPAYCO_TEST === 'true'
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Starting payment checkout process')
+    
+    // Inicializar SDK después del polyfill
+    let ePayco
+    try {
+      ePayco = initializeEPaycoSDK()
+    } catch (error) {
+      console.error('❌ ePayco configuration error:', error)
+      return NextResponse.json(
+        { error: 'ePayco no está configurado correctamente' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json()
     const { amount, currency = 'COP', description, customerInfo } = body
 
@@ -22,14 +52,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
-      )
-    }
-
-    // Validar que las claves de ePayco estén configuradas
-    if (!process.env.EPAYCO_PUBLIC_KEY || !process.env.EPAYCO_PRIVATE_KEY) {
-      return NextResponse.json(
-        { error: 'ePayco no está configurado correctamente' },
-        { status: 500 }
       )
     }
 
@@ -58,16 +80,27 @@ export async function POST(request: NextRequest) {
           isActive: false // Mark as inactive until proper registration
         }
       })
+      
+      console.log('✅ Created new user:', user.id)
     }
 
     // Generar un invoice único para ePayco
     const invoice = `GV-${Date.now()}-${user.id.slice(-6)}`
 
-    // Obtener IP del cliente
-    const clientIp = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     request.headers.get('cf-connecting-ip') || 
-                     '127.0.0.1'
+    // 🔧 MEJORADO: Función helper para obtener IP del cliente
+    const getClientIp = (req: NextRequest): string => {
+      const forwarded = req.headers.get('x-forwarded-for')
+      const realIp = req.headers.get('x-real-ip')
+      const cfIp = req.headers.get('cf-connecting-ip')
+      
+      if (forwarded) {
+        return forwarded.split(',')[0].trim()
+      }
+      
+      return realIp || cfIp || '127.0.0.1'
+    }
+
+    const clientIp = getClientIp(request)
 
     // Crear datos para PSE (transferencia bancaria)
     const pseData = {
@@ -86,10 +119,10 @@ export async function POST(request: NextRequest) {
       email: customerInfo.email,
       country: "CO",
       cell_phone: customerInfo.phone || "3001234567",
-      ip: clientIp.split(',')[0].trim(), // Usar la primera IP si hay múltiples
+      ip: clientIp,
       url_response: `${process.env.NEXTAUTH_URL}/api/payment/response`,
       url_confirmation: `${process.env.NEXTAUTH_URL}/api/payment/confirmation`,
-      metodoconfirmacion: "POST",
+      method_confirmation: "POST", // 🔧 CORREGIDO: era "metodoconfirmacion"
       
       // Parámetros extras para metadata
       extra1: user.id,
@@ -99,6 +132,8 @@ export async function POST(request: NextRequest) {
       extra5: "",
       extra6: ""
     }
+
+    console.log('📤 Sending PSE payment data:', pseData)
 
     // Crear registro de pago en la base de datos
     const payment = await prisma.payment.create({
@@ -112,28 +147,69 @@ export async function POST(request: NextRequest) {
         description,
         metadata: {
           customerInfo,
-          ePaycoData: pseData
+          ePaycoData: pseData,
+          clientIp,
+          userAgent: request.headers.get('user-agent') || 'unknown'
         }
       }
     })
 
-    // Crear el pago PSE con ePayco
+    console.log('✅ Created payment record:', payment.id)
+
+    // 🔧 IMPORTANTE: Usar Promise-based approach correctamente
+    // El SDK de ePayco usa callbacks, no Promises nativas
+    const createPSEPayment = (): Promise<any> => {
+      return new Promise((resolve, reject) => {
+        ePayco.bank.create(pseData, (err: any, response: any) => {
+          if (err) {
+            console.error('❌ ePayco SDK error:', err)
+            reject(err)
+          } else {
+            console.log('✅ ePayco SDK response:', response)
+            resolve(response)
+          }
+        })
+      })
+    }
+
+    // Crear el pago PSE con ePayco usando el approach correcto
     try {
-      const pseResponse = await ePayco.bank.create(pseData)
+      const pseResponse = await createPSEPayment()
       
-      if (pseResponse.success && pseResponse.data.urlbanco) {
+      // ✅ Verificar la estructura de respuesta correcta de ePayco
+      if (pseResponse && pseResponse.urlbanco) {
+        // Actualizar el pago con la referencia de ePayco
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { 
+            metadata: {
+              ...payment.metadata as any,
+              ePaycoResponse: pseResponse
+            }
+          }
+        })
+
         return NextResponse.json({
           success: true,
-          payment_url: pseResponse.data.urlbanco,
+          payment_url: pseResponse.urlbanco,
           invoice: invoice,
           paymentId: payment.id,
-          ref_payco: pseResponse.data.ref_payco
+          ref_payco: pseResponse.ref_payco
         })
       } else {
+        console.error('❌ Invalid ePayco response structure:', pseResponse)
+        
         // Actualizar el pago como fallido
         await prisma.payment.update({
           where: { id: payment.id },
-          data: { status: 'FAILED' }
+          data: { 
+            status: 'FAILED',
+            metadata: {
+              ...payment.metadata as any,
+              error: 'Invalid ePayco response structure',
+              ePaycoResponse: pseResponse
+            }
+          }
         })
         
         return NextResponse.json(
@@ -142,12 +218,19 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (ePaycoError: any) {
-      console.error('Error creando pago PSE con ePayco:', ePaycoError)
+      console.error('❌ Error creando pago PSE con ePayco:', ePaycoError)
       
-      // Actualizar el pago como fallido
+      // Actualizar el pago como fallido con detalles del error
       await prisma.payment.update({
         where: { id: payment.id },
-        data: { status: 'FAILED' }
+        data: { 
+          status: 'FAILED',
+          metadata: {
+            ...payment.metadata as any,
+            error: ePaycoError.message || 'Unknown ePayco error',
+            fullError: ePaycoError
+          }
+        }
       })
       
       return NextResponse.json(
@@ -157,11 +240,11 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('Error en checkout ePayco:', error)
+    console.error('❌ Error en checkout ePayco:', error)
     
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
   }
-} 
+}
