@@ -3,13 +3,26 @@ import { PrismaClient } from '@prisma/client'
 import { generateUserLinks } from '@/lib/user-links'
 import { generateReferralCode } from '@/lib/utils'
 
-// 🎯 SOLUCIÓN ROBUSTA: Polyfill fetch antes de cualquier importación del SDK
-if (!global.fetch) {
-  const fetch = require('node-fetch')
-  global.fetch = fetch
-  global.Headers = fetch.Headers
-  global.Request = fetch.Request
-  global.Response = fetch.Response
+// 👉 Asegurarnos de que `fetch` exista (Node 18+ lo incluye de forma nativa).
+//    Solo si no existe intentamos cargar un polyfill, sin sobreescribir la implementación nativa.
+if (typeof globalThis.fetch !== 'function') {
+  try {
+    // `node-fetch` solo se carga si hace falta.
+    //  - Si el proyecto ya tiene la dependencia instalada funcionará.
+    //  - Si no está instalada, lanzará un mensaje de log descriptivo y el request fallará como antes.
+    //    (Útil en entornos donde no sea necesario el polyfill).
+    //  - Nunca sobreescribimos la implementación de Node si existe.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fetchPkg = require('node-fetch')
+    const fetchFn = fetchPkg.default || fetchPkg
+    globalThis.fetch = fetchFn
+    globalThis.Headers = fetchPkg.Headers
+    globalThis.Request = fetchPkg.Request
+    globalThis.Response = fetchPkg.Response
+    console.log('ℹ️  Polyfill global fetch cargado desde node-fetch')
+  } catch (polyErr) {
+    console.warn('⚠️  No se pudo cargar node-fetch. Asegúrate de instalarlo si tu versión de Node no soporta fetch nativo.')
+  }
 }
 
 const prisma = new PrismaClient()
